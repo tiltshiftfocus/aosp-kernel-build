@@ -1,0 +1,51 @@
+name: build-kernel-psyche
+on:
+  workflow_dispatch:
+jobs:
+  build-ksu:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
+      - name: Setup build environment
+        run: |
+          sudo apt-get update
+          sudo apt install build-essential git curl wget bison flex zip bc cpio libssl-dev ccache zip
+          sudo curl --create-dirs -o /usr/local/bin/repo -L https://storage.googleapis.com/git-repo-downloads/repo
+          sudo chmod a+rx /usr/local/bin/repo
+      - name: Clone repo and sync
+        run: |
+          repo init -u https://github.com/tiltshiftfocus/kernel_manifest_psyche -b main --depth=1
+          repo sync
+          mkdir -p kernel_platform/device/xiaomi/marble-kernel/dtbs
+      - name: Include Proton Clang
+        run: |
+          cd kernel_platform
+          wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip
+          unzip 20210522.zip
+      - name: Build kernel
+        run: |
+          cd kernel_platform/xiaomi/sm8250
+          ./build.sh psyche ksu
+      - name: Get built zip filename
+        id: releasezip
+        run: |
+          cd kernel_platform/xiaomi/sm8250/built_zip
+          ls | head -n 1
+          echo "built_zip=$(ls | head -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Generate release tag
+        id: tag
+        run: echo "release_tag=$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          files: |
+            ${{ steps.releasezip.outputs.built_zip }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-artifact
+          path: kernel_platform/xiaomi/sm8250/built_zip/*
