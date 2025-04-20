@@ -28,13 +28,15 @@ jobs:
         run: |
           cd kernel_platform/xiaomi/sm8250
           ./build.sh psyche ksu
-      - name: Get built zip filename and move to working directory
+      - name: Get built zip filename and copy to working directory
         id: releasezip
         run: |
           cd kernel_platform/xiaomi/sm8250/built_zip
           BUILT_ZIP=$(ls | head -n 1)
           echo "built_zip=$BUILT_ZIP" >> "$GITHUB_OUTPUT"
-          cp $BUILT_ZIP ../../../../
+          echo "$PWD/$BUILT_ZIP"
+          echo "$GITHUB_WORKSPACE"
+          cp "$BUILT_ZIP" "$GITHUB_WORKSPACE"
       - name: Generate release tag
         id: tag
         run: echo "release_tag=$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
