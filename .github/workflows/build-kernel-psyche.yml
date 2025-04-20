@@ -19,7 +19,6 @@ jobs:
         run: |
           repo init -u https://github.com/tiltshiftfocus/kernel_manifest_psyche -b main --depth=1
           repo sync
-          mkdir -p kernel_platform/device/xiaomi/marble-kernel/dtbs
       - name: Include Proton Clang
         run: |
           cd kernel_platform
