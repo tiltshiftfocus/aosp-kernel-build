@@ -19,6 +19,11 @@ jobs:
         run: |
           repo init -u https://github.com/tiltshiftfocus/kernel_manifest_psyche -b main --depth=1
           repo sync
+      - name: Set Zip filename variable
+        id: zipname
+        run: |
+          COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-8)
+          echo "zipfile="Kernel_AOSP_psyche_KernelSU-Next-SUSFS_$(date +%Y%m%d_%H%M%S)_anykernel3_$COMMIT_HASH.zip"" >> "$GITHUB_OUTPUT"
       - name: Include Proton Clang
         run: |
           cd kernel_platform
@@ -28,15 +33,16 @@ jobs:
         run: |
           cd kernel_platform/xiaomi/sm8250
           ./build.sh psyche ksu
-      - name: Get built zip filename and copy to working directory
-        id: releasezip
+      - name: Zip output
         run: |
-          cd kernel_platform/xiaomi/sm8250/built_zip
-          BUILT_ZIP=$(ls | head -n 1)
-          echo "built_zip=$BUILT_ZIP" >> "$GITHUB_OUTPUT"
-          echo "$PWD/$BUILT_ZIP"
-          echo "$GITHUB_WORKSPACE"
-          cp "$BUILT_ZIP" "$GITHUB_WORKSPACE"
+          mkdir -p AnyKernel3/kernels
+          cp kernel_platform/xiaomi/sm8250/out/arch/arm64/boot/Image AnyKernel3/kernels
+          cp kernel_platform/xiaomi/sm8250/out/arch/arm64/boot/dtb AnyKernel3/kernels
+          cd AnyKernel3
+          rm -r .git README.md
+          find . -type f -name 'placeholder' -delete
+          find . -type d -empty -delete
+          zip -r9 "../${{ steps.zipname.outputs.zipfile }}" *
       - name: Generate release tag
         id: tag
         run: echo "release_tag=$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
@@ -45,9 +51,9 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           files: |
-            ${{ steps.releasezip.outputs.built_zip }}
+            ${{ steps.zipname.outputs.zipfile }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: kernel-artifact
-          path: kernel_platform/xiaomi/sm8250/built_zip/*
+          path: AnyKernel3/*
